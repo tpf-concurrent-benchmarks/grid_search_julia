@@ -1,0 +1,46 @@
+version: "3.7"
+
+services:
+  worker:
+    image: julia_worker
+    tty: true
+    stdin_open: true
+    volumes:
+      - type: bind
+        source: ./ips
+        target: /opt/app/ips
+        read_only: false
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 1024M
+      restart_policy:
+        condition: none
+    environment:
+      - LOCAL=${LOCAL}
+      - NODE_ID=worker_{{.Task.Slot}}
+      - TASK_SLOT={{.Task.Slot}}
+    command: /bin/bash -c "echo $$(hostname -i) > /opt/app/ips/ip_$$TASK_SLOT.txt && /usr/sbin/sshd -D"
+
+
+  manager:
+    image: julia_manager
+    tty: true
+    stdin_open: true
+    command: /bin/bash
+    depends_on:
+      - worker
+    volumes:
+      - "./src:/opt/app"
+      - type: bind
+        source: ./ips
+        target: /opt/app/ips
+        read_only: false
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: none
+    environment:
+      - LOCAL=${LOCAL}
+      - NODE_ID=worker_{{.Task.Slot}}
