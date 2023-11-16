@@ -1,4 +1,4 @@
-@everywhere module Aggregators
+module Aggregators
 
 export Aggregator, Params, aggregate
 

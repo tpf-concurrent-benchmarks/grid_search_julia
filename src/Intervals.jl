@@ -1,4 +1,4 @@
-@everywhere module Intervals
+module Intervals
 
 export Interval, interval_size, unfold, split, isize
 

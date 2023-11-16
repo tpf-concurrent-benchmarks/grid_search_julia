@@ -1,4 +1,4 @@
-@everywhere module Works
+module Works
 
 using ..Intervals
 using ..Aggregators
@@ -38,6 +38,7 @@ function calc_partitions_per_interval(self::Work, min_batches::Integer)
 end
 
 function unfold(self::Work, precision::Integer = -1)
+    println("Unfolding work - intervals: $(self.intervals)")
     current = map(i -> i.istart, self.intervals)
     size = wsize(self, precision)
     
@@ -62,11 +63,12 @@ end
 function split(self::Work, max_chunk_size::Integer, precision::Integer = -1)
     min_batches = ceil(Int, wsize(self) / max_chunk_size)
     partitions_per_interval = calc_partitions_per_interval(self, min_batches)
+    println("Partitions per interval: $partitions_per_interval")
 
     iterators = Vector{Vector{Interval}}(undef, length(self.intervals))
 
     for (interval_pos, interval) in enumerate(self.intervals)
-        iterators[interval_pos] = Intervals.split_eager(interval, partitions_per_interval[interval_pos], precision)
+        iterators[interval_pos] = @time Intervals.split_eager(interval, partitions_per_interval[interval_pos], precision)
     end
     make_iterator(WorkPlan(iterators, self.aggregator))
 end

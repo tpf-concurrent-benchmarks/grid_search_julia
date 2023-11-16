@@ -17,6 +17,8 @@ RUN echo "cd /opt/app" >> ~/.bashrc
 COPY ./.keys/manager_rsa.pub /root/.ssh/authorized_keys
 RUN chmod 600 /root/.ssh/authorized_keys
 
+RUN julia -e 'using Pkg; Pkg.add("ProgressMeter")'
+
 EXPOSE 22
 
 WORKDIR /opt/app

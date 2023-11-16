@@ -1,19 +1,18 @@
 include("initialize.jl")
+
 using Distributed
 @everywhere using Pkg
 @everywhere Pkg.add("ProgressMeter")
 @everywhere Pkg.instantiate()
 using ProgressMeter
 
+@everywhere include("Intervals.jl")
+@everywhere include("Aggregators.jl")
+@everywhere include("Works.jl")
 
-include("Intervals.jl")
-include("Aggregators.jl")
-# include("CircularIterators.jl")
-include("Works.jl")
-
-using .Intervals
-using .Aggregators
-using .Works
+@everywhere using .Intervals
+@everywhere using .Aggregators
+@everywhere using .Works
 
 function aggregate_results(results, ::Val{Aggregators.Mean})
 	mean = 0.0
@@ -65,10 +64,10 @@ end
 
 
 function main()
-	work = Work([Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3)], Aggregators.Min)
-	sub_works = @time Works.split(work, 108000, 3)
+	work = Work([Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3)], Aggregators.Min)
+	sub_works = @time Works.split(work, 10000000, 3)
 	println("Got sub_works")
 	w = workers()
 	pool = WorkerPool(w)
@@ -79,5 +78,7 @@ function main()
 	result = aggregate_results(results, Aggregators.Min)
 	println("Result: $result")
 end
+
+GC.enable_logging(true)
 
 main()
