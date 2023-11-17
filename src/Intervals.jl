@@ -1,4 +1,4 @@
-@everywhere module Intervals
+module Intervals
 
 export Interval, interval_size, unfold, split, isize
 
@@ -11,7 +11,7 @@ struct Interval
     Interval(istart::Number, iend::Number, istep::Number, iprec::Integer = -1) = new(Float64(istart), Float64(iend), Float64(istep), iprec)
 end
 
-function round_number(n::Real, precision::Integer)
+function round_number(n::Float64, precision::Integer)::Float64
     if precision == -1
         return n
     end

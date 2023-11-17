@@ -1,4 +1,4 @@
-@everywhere module Works
+module Works
 
 using ..Intervals
 using ..Aggregators
@@ -40,9 +40,13 @@ end
 function unfold(self::Work, precision::Integer = -1)
     current = map(i -> i.istart, self.intervals)
     size = wsize(self, precision)
-    
+    started = false
+
     get_next = function()
-        curr_copy = copy(current)
+        if !started
+            started = true
+            return current
+        end
         for (i, curr_val) in enumerate(current)
             start = Intervals.round_number(self.intervals[i].istart, precision)
             _end = Intervals.round_number(self.intervals[i].iend, precision)
@@ -54,7 +58,7 @@ function unfold(self::Work, precision::Integer = -1)
                 current[i] = start
             end
         end
-        curr_copy
+        current
     end
     (get_next() for _ in 1:size)
 end
@@ -66,13 +70,18 @@ function split(self::Work, max_chunk_size::Integer, precision::Integer = -1)
     iterators = Vector{Vector{Interval}}(undef, length(self.intervals))
 
     for (interval_pos, interval) in enumerate(self.intervals)
-        iterators[interval_pos] = Intervals.split_eager(interval, partitions_per_interval[interval_pos], precision)
+        iterators[interval_pos] = @time Intervals.split_eager(interval, partitions_per_interval[interval_pos], precision)
     end
     make_iterator(WorkPlan(iterators, self.aggregator))
 end
 
 function evaluate_for(self::Work, f::Function)
-    results = map(i -> (i, f(i)), unfold(self))
+    results = Vector{Tuple{Params, Float64}}(undef, wsize(self))
+    for (i, params) in enumerate(unfold(self))
+        params_converted = (params...,)
+        # print("params_converted: $params_converted\n")
+        results[i] = (params_converted, f(params_converted))
+    end
     aggregate(self.aggregator, results)
 end
 

@@ -6,6 +6,7 @@ services:
     tty: true
     stdin_open: true
     volumes:
+      - "./src:/opt/app"
       - type: bind
         source: ./ips
         target: /opt/app/ips
@@ -14,7 +15,7 @@ services:
       replicas: 4
       resources:
         limits:
-          memory: 1024M
+          memory: 3G
       restart_policy:
         condition: none
     environment:
@@ -39,6 +40,9 @@ services:
         read_only: false
     deploy:
       replicas: 1
+      resources:
+        limits:
+          memory: 2G
       restart_policy:
         condition: none
     environment:

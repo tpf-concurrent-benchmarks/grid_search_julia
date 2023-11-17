@@ -1,24 +1,26 @@
-include("initialize.jl")
+# include("initialize.jl")
 using Distributed
 @everywhere using Pkg
+@everywhere Pkg.precompile()
 @everywhere Pkg.add("ProgressMeter")
+@everywhere Pkg.add("ProfileView")
 @everywhere Pkg.instantiate()
 using ProgressMeter
+using ProfileView
 
-
-include("Intervals.jl")
-include("Aggregators.jl")
-# include("CircularIterators.jl")
-include("Works.jl")
+@everywhere include("Intervals.jl")
+@everywhere include("Aggregators.jl")
+@everywhere include("Works.jl")
 
 using .Intervals
 using .Aggregators
 using .Works
 
-function aggregate_results(results, ::Val{Aggregators.Mean})
+
+function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
 	count = 0
-	for (value, params_amount) in results
+	for (_, value, params_amount) in results
 		new_count = count + params_amount
 		a = mean * (count / new_count)
 		b = value * (params_amount / new_count)
@@ -28,10 +30,10 @@ function aggregate_results(results, ::Val{Aggregators.Mean})
 	return (mean, count)
 end
 
-function aggregate_results(results, ::Val{Aggregators.Max})
+function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Max})
 	max_val = -Inf
-	max_params = Params([])
-	for (value, params) in results
+	max_params = Params((0.0, 0.0, 0.0))
+	for (params, value, _) in results
 		if value > max_val
 			max_val = value
 			max_params = params
@@ -40,10 +42,10 @@ function aggregate_results(results, ::Val{Aggregators.Max})
 	return (max_val, max_params)
 end
 
-function aggregate_results(results, ::Val{Aggregators.Min})
+function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Min})
 	min_val = Inf
-	min_params = Params([])
-	for (value, params) in results
+	min_params = Params((0.0, 0.0, 0.0))
+	for (params, value, _) in results
 		if value < min_val
 			min_val = value
 			min_params = params
@@ -52,32 +54,42 @@ function aggregate_results(results, ::Val{Aggregators.Min})
 	return (min_val, min_params)
 end
 
-function aggregate_results(results, aggregator::Aggregator)
+function aggregate_results(results:: Vector{Aggregators.Result}, aggregator::Aggregator)
 	aggregate_results(results, Val(aggregator))
 end
 
-@everywhere function griewank_func(params::Vector{Float64})
+@everywhere function griewank_func(params::Aggregators.Params)
 	a = params[1]
 	b = params[2]
 	c = params[3]
-	1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
+	a + b + c
 end
 
 
-function main()
+function main(do_it = true)
+	if !do_it
+		return
+	end
+
 	work = Work([Interval(-600, 600, 5, 3),
 				 Interval(-600, 600, 5, 3),
 				 Interval(-600, 600, 5, 3)], Aggregators.Min)
-	sub_works = @time Works.split(work, 108000, 3)
+	sub_works = @time Works.split(work, 100000, 3)
 	println("Got sub_works")
 	w = workers()
 	pool = WorkerPool(w)
 	results = @time @showprogress pmap(pool, sub_works) do sub_work
-		Works.evaluate_for(sub_work, griewank_func)
+		ProfileView.@profview Works.evaluate_for(sub_work, griewank_func)
 	end
+
 	println("Amount of results: $(length(results))")
-	result = aggregate_results(results, Aggregators.Min)
-	println("Result: $result")
+	# println("Results: $results")
+	# result = aggregate_results(results, Aggregators.Min)
+	#println("Result: $result")
 end
 
-main()
+main(false)
+main(true)
+while true
+	sleep(5)
+end
