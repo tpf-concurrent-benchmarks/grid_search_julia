@@ -1,12 +1,9 @@
-# include("initialize.jl")
+include("initialize.jl")
 using Distributed
 @everywhere using Pkg
-@everywhere Pkg.precompile()
 @everywhere Pkg.add("ProgressMeter")
-@everywhere Pkg.add("ProfileView")
 @everywhere Pkg.instantiate()
 using ProgressMeter
-using ProfileView
 
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
@@ -66,20 +63,17 @@ end
 end
 
 
-function main(do_it = true)
-	if !do_it
-		return
-	end
+function main()
 
-	work = Work([Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3)], Aggregators.Min)
+	work = Work((Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
 	sub_works = @time Works.split(work, 100000, 3)
 	println("Got sub_works")
 	w = workers()
 	pool = WorkerPool(w)
 	results = @time @showprogress pmap(pool, sub_works) do sub_work
-		ProfileView.@profview Works.evaluate_for(sub_work, griewank_func)
+		Works.evaluate_for(sub_work, griewank_func)
 	end
 
 	println("Amount of results: $(length(results))")
@@ -88,8 +82,4 @@ function main(do_it = true)
 	#println("Result: $result")
 end
 
-main(false)
-main(true)
-while true
-	sleep(5)
-end
+main()

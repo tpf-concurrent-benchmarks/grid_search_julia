@@ -6,23 +6,33 @@ using ..Aggregators
 
 export Work, wsize, evaluate_for
 
-struct Work
-    intervals::Array{Interval}
+struct Work{N}
+    intervals::NTuple{N, Interval}
     aggregator::Aggregator
-    Work(intervals::Array{Interval}, aggregator::Aggregator = Aggregators.Mean) = new(intervals, aggregator)
+    size::UInt64
+    function Work(intervals::NTuple{N, Interval}, aggregator::Aggregator, precision::Int = 3) where {N}
+        size = wsize(intervals, precision)
+        new{N}(intervals, aggregator, size)
+    end
 end
 
-function wsize(self::Work, precision::Integer = -1)
+function wsize(intervals::NTuple{N, Interval}, precision::Int = -1) where {N}
+    prod(isize.(intervals, precision))
+end
+
+"""
+function wsize(self::Work{N}, precision::Integer = -1) where {N}
     prod(BigInt.(isize.(self.intervals, precision)))
 end
+"""
 
 function calc_amount_of_missing_partitions(min_batches::Integer, curr_partitions_per_interval::Vector{Int})
     ceil(Int, min_batches / prod(curr_partitions_per_interval))
 end
 
 
-function calc_partitions_per_interval(self::Work, min_batches::Integer)
-    curr_partitions_per_interval = fill(1, length(self.intervals))
+function calc_partitions_per_interval(self::Work{N}, min_batches::Integer) where {N}
+    curr_partitions_per_interval = fill(1, N)
 
     for interval_pos in 1:length(self.intervals)
         missing_partitions = calc_amount_of_missing_partitions(min_batches, curr_partitions_per_interval)
@@ -37,9 +47,8 @@ function calc_partitions_per_interval(self::Work, min_batches::Integer)
     curr_partitions_per_interval
 end
 
-function unfold(self::Work, precision::Integer = -1)
-    current = map(i -> i.istart, self.intervals)
-    size = wsize(self, precision)
+function unfold(self::Work{N}, precision::Integer = -1) where {N}
+    current = collect(map(i -> i.istart, self.intervals))
     started = false
 
     get_next = function()
@@ -60,11 +69,12 @@ function unfold(self::Work, precision::Integer = -1)
         end
         current
     end
-    (get_next() for _ in 1:size)
+    (get_next() for _ in 1:self.size)
 end
 
-function split(self::Work, max_chunk_size::Integer, precision::Integer = -1)
-    min_batches = ceil(Int, wsize(self) / max_chunk_size)
+function split(self::Work{N}, max_chunk_size::Integer, precision::Int = -1) where {N}
+    println("Splitting with $N intervals")
+    min_batches = ceil(Int, self.size / max_chunk_size)
     partitions_per_interval = calc_partitions_per_interval(self, min_batches)
 
     iterators = Vector{Vector{Interval}}(undef, length(self.intervals))
@@ -75,8 +85,8 @@ function split(self::Work, max_chunk_size::Integer, precision::Integer = -1)
     make_iterator(WorkPlan(iterators, self.aggregator))
 end
 
-function evaluate_for(self::Work, f::Function)
-    results = Vector{Tuple{Params, Float64}}(undef, wsize(self))
+function evaluate_for(self::Work{N}, f::Function) where {N}
+    results = Vector{Tuple{Params, Float64}}(undef, self.size)
     for (i, params) in enumerate(unfold(self))
         params_converted = (params...,)
         # print("params_converted: $params_converted\n")
@@ -101,13 +111,13 @@ function make_iterator(self::WorkPlan)
     get_next = function()
         if !started
             started = true
-            return Work(copy(current_values), self.aggregator)
+            return Work((current_values..., ), self.aggregator)
         end
         for i in 1:length(self.ints)
             positions[i]  = positions[i] % length(self.ints[i]) + 1
             current_values[i] = self.ints[i][positions[i]]
             if positions[i] != 1
-                return Work(copy(current_values), self.aggregator)
+                return Work((current_values..., ), self.aggregator)
             end
         end
         error("Unreachable")

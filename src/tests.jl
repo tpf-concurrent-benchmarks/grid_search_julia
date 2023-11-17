@@ -2,12 +2,10 @@ using Distributed
 
 include("Intervals.jl")
 include("Aggregators.jl")
-include("CircularIterators.jl")
 include("Works.jl")
 
 using ..Works
 using ..Intervals
-using ..CircularIterators
 using ..Aggregators
 
 
