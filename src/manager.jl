@@ -1,5 +1,6 @@
 include("initialize.jl")
 using Distributed
+
 @everywhere using Pkg
 @everywhere Pkg.add("ProgressMeter")
 @everywhere Pkg.instantiate()
@@ -55,31 +56,38 @@ function aggregate_results(results:: Vector{Aggregators.Result}, aggregator::Agg
 	aggregate_results(results, Val(aggregator))
 end
 
-@everywhere function griewank_func(params::Aggregators.Params)
+function griewank_func(params::Aggregators.Params)
 	a = params[1]
 	b = params[2]
 	c = params[3]
 	a + b + c
 end
 
+@everywhere function evaluate_for_partition(sub_work_partition)
+	map(Works.evaluate_for, sub_work_partition)
+end
+
+function distribute_work(sub_works_parts, pool)
+	@showprogress pmap(pool, sub_works_parts) do sub_works_part
+		evaluate_for_partition(sub_works_part)
+	end
+end
 
 function main()
+	precompile(Works.evaluate_for, (Works.Work{3},))
 
 	work = Work((Interval(-600, 600, 0.2, 3),
 				 Interval(-600, 600, 0.2, 3),
 				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
-	sub_works = @time Works.split(work, 100000, 3)
+	sub_works = @time collect(Works.split(work, 200000, 3))
+	sub_works_parts = Iterators.partition(sub_works, 10)
+
 	println("Got sub_works")
 	w = workers()
 	pool = WorkerPool(w)
-	results = @time @showprogress pmap(pool, sub_works) do sub_work
-		Works.evaluate_for(sub_work, griewank_func)
-	end
 
-	println("Amount of results: $(length(results))")
-	# println("Results: $results")
-	# result = aggregate_results(results, Aggregators.Min)
-	#println("Result: $result")
+	results = @time distribute_work(sub_works_parts, pool)
+	# println("Amount of results: $(length(results))")
 end
 
 main()

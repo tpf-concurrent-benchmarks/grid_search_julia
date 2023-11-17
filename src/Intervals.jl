@@ -15,10 +15,6 @@ function round_number(n::Float64, precision::Int)::Float64
     if precision == -1
         return n
     end
-    """
-    scale = 10 ^ precision
-    round(n * scale) / scale
-    """
     round(n, digits = precision)
 end
 

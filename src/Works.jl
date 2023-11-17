@@ -20,12 +20,6 @@ function wsize(intervals::NTuple{N, Interval}, precision::Int = -1) where {N}
     prod(isize.(intervals, precision))
 end
 
-"""
-function wsize(self::Work{N}, precision::Integer = -1) where {N}
-    prod(BigInt.(isize.(self.intervals, precision)))
-end
-"""
-
 function calc_amount_of_missing_partitions(min_batches::Integer, curr_partitions_per_interval::Vector{Int})
     ceil(Int, min_batches / prod(curr_partitions_per_interval))
 end
@@ -85,7 +79,18 @@ function split(self::Work{N}, max_chunk_size::Integer, precision::Int = -1) wher
     make_iterator(WorkPlan(iterators, self.aggregator))
 end
 
-function evaluate_for(self::Work{N}, f::Function) where {N}
+function __griewanc_func(params::Params)
+    a = params[1]
+    b = params[2]
+    c = params[3]
+    1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
+end
+
+function evaluate_for(self::Work{3})
+    evaluate_for(__griewanc_func, self)
+end
+
+function evaluate_for(f::Function, self::Work{N}) where {N}
     results = Vector{Tuple{Params, Float64}}(undef, self.size)
     for (i, params) in enumerate(unfold(self))
         params_converted = (params...,)
@@ -94,7 +99,6 @@ function evaluate_for(self::Work{N}, f::Function) where {N}
     end
     aggregate(self.aggregator, results)
 end
-
 
 
 struct WorkPlan
