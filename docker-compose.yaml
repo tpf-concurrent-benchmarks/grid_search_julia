@@ -12,10 +12,10 @@ services:
         target: /opt/app/ips
         read_only: false
     deploy:
-      replicas: 4
+      replicas: 2
       resources:
         limits:
-          memory: 1024M
+          memory: 2G
       restart_policy:
         condition: none
     environment:
@@ -23,7 +23,6 @@ services:
       - NODE_ID=worker_{{.Task.Slot}}
       - TASK_SLOT={{.Task.Slot}}
     command: /bin/bash -c "echo $$(hostname -i) > /opt/app/ips/ip_$$TASK_SLOT.txt && /usr/sbin/sshd -D"
-
 
   manager:
     image: julia_manager
@@ -42,7 +41,7 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 1024M
+          memory: 1G
       restart_policy:
         condition: none
     environment:

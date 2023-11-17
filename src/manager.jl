@@ -5,7 +5,7 @@ using Distributed
 @everywhere Pkg.add("ProgressMeter")
 @everywhere Pkg.instantiate()
 using ProgressMeter
-
+using Profile
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
 @everywhere include("Works.jl")
@@ -13,6 +13,7 @@ using ProgressMeter
 @everywhere using .Intervals
 @everywhere using .Aggregators
 @everywhere using .Works
+
 
 function aggregate_results(results, ::Val{Aggregators.Mean})
 	mean = 0.0
@@ -59,19 +60,18 @@ end
 	a = params[1]
 	b = params[2]
 	c = params[3]
-	1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
+	result = 1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
 end
 
-
 function main()
-	work = Work([Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3)], Aggregators.Min)
-	sub_works = @time Works.split(work, 10000000, 3)
+	work = Work([Interval(544.0, 600.0, 2.0, 3),
+    Interval(-600.0, 600.0, 2.0, 3),
+    Interval(-600.0, 600.0, 1.0, 3)], Aggregators.Min)
+	sub_works = @time Works.split(work, 2500000, 3)
 	println("Got sub_works")
 	w = workers()
 	pool = WorkerPool(w)
-	results = @time @showprogress pmap(pool, sub_works) do sub_work
+	results = @time map(sub_works) do sub_work
 		Works.evaluate_for(sub_work, griewank_func)
 	end
 	println("Amount of results: $(length(results))")
@@ -79,6 +79,6 @@ function main()
 	println("Result: $result")
 end
 
-GC.enable_logging(true)
+#GC.enable_logging(true)
 
-main()
+@profile main()
