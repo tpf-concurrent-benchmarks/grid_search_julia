@@ -2,18 +2,25 @@ module Works
 
 using ..Intervals
 using ..Aggregators
-# using ..CircularIterators
 
 export Work, wsize, evaluate_for
 
-struct Work
-    intervals::Array{Interval}
-    aggregator::Aggregator
-    Work(intervals::Array{Interval}, aggregator::Aggregator = Aggregators.Mean) = new(intervals, aggregator)
+macro INTERVALS()
+    return :(3)
 end
 
-function wsize(self::Work, precision::Integer = -1)
-    prod(BigInt.(isize.(self.intervals, precision)))
+struct Work
+    intervals::NTuple{@INTERVALS, Interval}
+    aggregator::Aggregator
+    size::Int64
+    function Work(intervals::NTuple{(@INTERVALS), Interval}, aggregator::Aggregator = Aggregators.Min, precision::Int = 3)
+        size = wsize(intervals, precision)
+        new(intervals, aggregator, size)
+    end
+end
+
+function wsize(intervals::NTuple{(@INTERVALS), Interval}, precision::Int = -1)
+    prod(isize.(intervals, precision))
 end
 
 function calc_amount_of_missing_partitions(min_batches::Integer, curr_partitions_per_interval::Vector{Int})
@@ -22,9 +29,9 @@ end
 
 
 function calc_partitions_per_interval(self::Work, min_batches::Integer)
-    curr_partitions_per_interval = fill(1, length(self.intervals))
+    curr_partitions_per_interval = fill(1, @INTERVALS)
 
-    for interval_pos in 1:length(self.intervals)
+    for interval_pos in 1:@INTERVALS
         missing_partitions = calc_amount_of_missing_partitions(min_batches, curr_partitions_per_interval)
         elements = isize(self.intervals[interval_pos])
         if elements > missing_partitions
@@ -38,30 +45,29 @@ function calc_partitions_per_interval(self::Work, min_batches::Integer)
 end
 
 function unfold(self::Work, precision::Integer = -1)
-    println("Unfolding work - intervals: $(self.intervals)")
-    current = map(i -> i.istart, self.intervals)
-    size = wsize(self, precision)
-    
-    get_next = function()
-        curr_copy = copy(current)
-        for (i, curr_val) in enumerate(current)
+    values = Array{Float64, 2}(undef, self.size, @INTERVALS)
+
+    values[1, :] = collect(map(interval -> interval.istart, self.intervals))
+
+    for pos in 2:self.size
+        values[pos] = values[pos - 1]
+        for (i, curr_val) in enumerate(values[pos - 1])
             start = Intervals.round_number(self.intervals[i].istart, precision)
             _end = Intervals.round_number(self.intervals[i].iend, precision)
             step = Intervals.round_number(self.intervals[i].istep, precision)
             if curr_val + step < _end
-                current[i] = Intervals.round_number(curr_val + step, precision)
+                values[pos, i] = Intervals.round_number(curr_val + step, precision)
                 break
             else
-                current[i] = start
+                values[pos, i] = Intervals.round_number(start, precision)
             end
         end
-        curr_copy
     end
-    (get_next() for _ in 1:size)
+    values
 end
 
-function split(self::Work, max_chunk_size::Integer, precision::Integer = -1)
-    min_batches = ceil(Int, wsize(self) / max_chunk_size)
+function split(self::Work, max_chunk_size::Integer, precision::Int = -1)
+    min_batches = ceil(Int, self.size / max_chunk_size)
     partitions_per_interval = calc_partitions_per_interval(self, min_batches)
     println("Partitions per interval: $partitions_per_interval")
 
@@ -73,10 +79,25 @@ function split(self::Work, max_chunk_size::Integer, precision::Integer = -1)
     make_iterator(WorkPlan(iterators, self.aggregator))
 end
 
-function evaluate_for(self::Work, f::Function)
-    results = map(i -> (i, f(i)), unfold(self))
-    aggregate(self.aggregator, results)
+function __griewanc_func(params::Params)
+    a = params[1]
+    b = params[2]
+    c = params[3]
+    1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
 end
+
+function evaluate_for!(self::Work, results::Vector{Tuple{Params, Float64}})
+    evaluate_for!(__griewanc_func, self, results)
+end
+
+function evaluate_for!(f::Function, self::Work, results::Vector)
+    for (i, params) in enumerate(eachrow(unfold(self)))
+        params_converted = ntuple(j -> params[j], @INTERVALS)
+        results[i] = (params_converted, f(params_converted))
+    end
+    aggregate(self.aggregator, results, self.size)
+end
+
 
 
 
@@ -94,13 +115,13 @@ function make_iterator(self::WorkPlan)
     get_next = function()
         if !started
             started = true
-            return Work(copy(current_values), self.aggregator)
+            return Work((current_values..., ), self.aggregator)
         end
         for i in 1:length(self.ints)
             positions[i]  = positions[i] % length(self.ints[i]) + 1
             current_values[i] = self.ints[i][positions[i]]
             if positions[i] != 1
-                return Work(copy(current_values), self.aggregator)
+                return Work((current_values..., ), self.aggregator)
             end
         end
         error("Unreachable")

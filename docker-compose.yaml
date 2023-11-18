@@ -15,7 +15,7 @@ services:
       replicas: 4
       resources:
         limits:
-          memory: 1024M
+          memory: 3G
       restart_policy:
         condition: none
     environment:
@@ -42,7 +42,7 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 1024M
+          memory: 2G
       restart_policy:
         condition: none
     environment:

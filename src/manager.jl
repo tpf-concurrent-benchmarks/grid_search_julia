@@ -1,10 +1,14 @@
 include("initialize.jl")
 
 using Distributed
-@everywhere using Pkg
-@everywhere Pkg.add("ProgressMeter")
-@everywhere Pkg.instantiate()
-using ProgressMeter
+@everywhere begin
+	using Pkg
+	Pkg.add("ProgressMeter")
+	Pkg.instantiate()
+	using ProgressMeter
+end
+
+@everywhere macro INTERVALS() return :(3) end
 
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
@@ -14,10 +18,13 @@ using ProgressMeter
 @everywhere using .Aggregators
 @everywhere using .Works
 
-function aggregate_results(results, ::Val{Aggregators.Mean})
+@everywhere const MAX_CHUNK_SIZE::Integer = 10000000
+@everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
+
+function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
 	count = 0
-	for (value, params_amount) in results
+	for (_, value, params_amount) in results
 		new_count = count + params_amount
 		a = mean * (count / new_count)
 		b = value * (params_amount / new_count)
@@ -27,10 +34,10 @@ function aggregate_results(results, ::Val{Aggregators.Mean})
 	return (mean, count)
 end
 
-function aggregate_results(results, ::Val{Aggregators.Max})
+function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Max})
 	max_val = -Inf
-	max_params = Params([])
-	for (value, params) in results
+	max_params = Params((0.0, 0.0, 0.0))
+	for (params, value, _) in results
 		if value > max_val
 			max_val = value
 			max_params = params
@@ -39,10 +46,10 @@ function aggregate_results(results, ::Val{Aggregators.Max})
 	return (max_val, max_params)
 end
 
-function aggregate_results(results, ::Val{Aggregators.Min})
+function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Min})
 	min_val = Inf
-	min_params = Params([])
-	for (value, params) in results
+	min_params = Params((0.0, 0.0, 0.0))
+	for (params, value, _) in results
 		if value < min_val
 			min_val = value
 			min_params = params
@@ -51,32 +58,38 @@ function aggregate_results(results, ::Val{Aggregators.Min})
 	return (min_val, min_params)
 end
 
-function aggregate_results(results, aggregator::Aggregator)
+function aggregate_results(results:: Vector{Aggregators.Result}, aggregator::Aggregator)
 	aggregate_results(results, Val(aggregator))
 end
 
-@everywhere function griewank_func(params::Vector{Float64})
+function griewank_func(params::Aggregators.Params)
 	a = params[1]
 	b = params[2]
 	c = params[3]
-	1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
+	a + b + c
 end
 
+@everywhere function evaluate_for_partition(sub_work_partition)
+	map(sub_work_partition) do sub_work
+		Works.evaluate_for!(sub_work, RESULTS)
+	end
+end
+
+function distribute_work(sub_works_parts, pool)
+	@showprogress pmap(pool, sub_works_parts) do sub_work_partition
+		evaluate_for_partition(sub_work_partition)
+	end
+end
 
 function main()
-	work = Work([Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3)], Aggregators.Min)
-	sub_works = @time Works.split(work, 10000000, 3)
+	work = Work([Interval(-600, 600, 5, 3),
+				 Interval(-600, 600, 5, 3),
+				 Interval(-600, 600, 5, 3)], Aggregators.Min)
+	sub_works = @time Works.split(work, 108000, 3)
 	println("Got sub_works")
-	w = workers()
-	pool = WorkerPool(w)
-	results = @time @showprogress pmap(pool, sub_works) do sub_work
-		Works.evaluate_for(sub_work, griewank_func)
-	end
-	println("Amount of results: $(length(results))")
-	result = aggregate_results(results, Aggregators.Min)
-	println("Result: $result")
+	pool = WorkerPool(workers())
+
+	partial_results = @time distribute_work(sub_works_parts, pool)
 end
 
 GC.enable_logging(true)
