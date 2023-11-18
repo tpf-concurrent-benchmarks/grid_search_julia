@@ -14,26 +14,24 @@ struct Result
     Result(value::Float64, count::Int) = new((0.0, 0.0, 0.0), value, count)
 end
 
-function aggregate(aggregator::Aggregator, values::Vector{Tuple{Params, Float64}})
-    ret = aggregate(Val(aggregator), values)
-    # free values from memory
-    
+function aggregate(aggregator::Aggregator, values::Vector{Tuple{Params, Float64}}, size::Integer)
+    aggregate(Val(aggregator), values, size)
 end
 
-function aggregate(::Val{Mean}, values::Vector{Tuple{Params, Float64}})
+function aggregate(::Val{Mean}, values::Vector{Tuple{Params, Float64}}, size::Integer)
     mean = 0.0
     count = 0
-    for (_, value) in values
+    for (_, value) in @view values[1:size]
         mean = mean + (value - mean) / (count + 1)
         count = count + 1
     end
     return Result(mean, count)
 end
 
-function aggregate(::Val{Max}, values::Vector{Tuple{Params, Float64}})
+function aggregate(::Val{Max}, values::Vector{Tuple{Params, Float64}}, size::Integer)
     max_val = -Inf
     max_params = Params((0.0, 0.0, 0.0))
-    for (params, value) in values
+    for (params, value) in @view values[1:size]
         if value > max_val
             max_val = value
             max_params = params
@@ -42,10 +40,10 @@ function aggregate(::Val{Max}, values::Vector{Tuple{Params, Float64}})
     return Result(max_params, max_val)
 end
 
-function aggregate(::Val{Min}, values::Vector{Tuple{Params, Float64}})
+function aggregate(::Val{Min}, values::Vector{Tuple{Params, Float64}}, size::Integer)
     min_val = Inf
     min_params = Params((0.0, 0.0, 0.0))
-    for (params, value) in values
+    for (params, value) in @view values[1:size]
         if value < min_val
             min_val = value
             min_params = params

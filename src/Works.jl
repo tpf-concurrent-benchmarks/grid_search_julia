@@ -94,7 +94,7 @@ function evaluate_for!(f::Function, self::Work{3}, results::Vector)
     for (i, params) in enumerate(unfold(self, 3))
         results[i] = (params, f(params))
     end
-    aggregate(self.aggregator, results)
+    aggregate(self.aggregator, results, self.size)
 end
 
 

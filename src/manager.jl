@@ -15,7 +15,7 @@ using .Intervals
 using .Aggregators
 using .Works
 
-@everywhere const MAX_CHUNK_SIZE::Integer = 10800000
+@everywhere const MAX_CHUNK_SIZE::Integer = 10000
 @everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
 
 
@@ -81,17 +81,24 @@ end
 
 function main()
 	precompile(Works.evaluate_for, (Works.Work{3},))
-	work = Work((Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
+	work = Work((Interval(-600, 600, 5, 3),
+				 Interval(-600, 600, 5, 3),
+				 Interval(-600, 600, 5, 3)), Aggregators.Min)
 	sub_works = @time Works.split(work, MAX_CHUNK_SIZE, 3)
 	sub_works_parts = Iterators.partition(sub_works, 10)
 
 	println("Got sub_works")
 	pool = WorkerPool(workers())
 
-	results = @time distribute_work(sub_works_parts, pool)
-	# println("Amount of results: $(length(results))")
+	partial_results = @time distribute_work(sub_works_parts, pool)
+	
+	# Although the code is fast, there is a bug somewhere, because the results are not correct
+	for partial_result in partial_results
+		for result in partial_result
+			println(result)
+		end
+	end
+	
 end
 
 main()
