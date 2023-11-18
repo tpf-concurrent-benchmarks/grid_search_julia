@@ -23,10 +23,10 @@ using .Works
 function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
 	count = 0
-	for (_, value, params_amount) in results
-		new_count = count + params_amount
+	for result in results
+		new_count = count + result.params_amount
 		a = mean * (count / new_count)
-		b = value * (params_amount / new_count)
+		b = result.value * (result.params_amount / new_count)
 		mean = a + b
 		count = new_count
 	end
@@ -36,10 +36,10 @@ end
 function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Max})
 	max_val = -Inf
 	max_params = Params((0.0, 0.0, 0.0))
-	for (params, value, _) in results
-		if value > max_val
-			max_val = value
-			max_params = params
+	for result in results
+		if result.value > max_val
+			max_val = result.value
+			max_params = result.params
 		end
 	end
 	return (max_val, max_params)
@@ -48,16 +48,16 @@ end
 function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Min})
 	min_val = Inf
 	min_params = Params((0.0, 0.0, 0.0))
-	for (params, value, _) in results
-		if value < min_val
-			min_val = value
-			min_params = params
+	for result in results
+		if result.value < min_val
+			min_val = result.value
+			min_params = result.params
 		end
 	end
 	return (min_val, min_params)
 end
 
-function aggregate_results(results:: Vector{Aggregators.Result}, aggregator::Aggregator)
+function aggregate_results(results::Vector{Aggregators.Result}, aggregator::Aggregator)
 	aggregate_results(results, Val(aggregator))
 end
 
@@ -93,6 +93,10 @@ function main()
 	pool = WorkerPool(workers())
 
 	partial_results = @time distribute_work(sub_works_parts, pool)
+  flat_results = reduce(vcat, partial_results)
+
+  agg = aggregate_results(flat_results, work.aggregator)
+  println("Result: $agg")
 end
 
 main()
