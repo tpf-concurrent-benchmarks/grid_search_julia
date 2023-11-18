@@ -41,6 +41,9 @@ function calc_partitions_per_interval(self::Work{N}, min_batches::Integer) where
     curr_partitions_per_interval
 end
 
+# Always returns the same pointer, but the values are updated
+# So values should be used or copied before calling this function again
+# And it's not thread safe
 function unfold(self::Work{N}, precision::Integer = -1) where {N}
     current = collect(map(i -> i.istart, self.intervals))
     started = false
