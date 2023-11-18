@@ -9,7 +9,7 @@ export Work, wsize, evaluate_for
 struct Work{N}
     intervals::NTuple{N, Interval}
     aggregator::Aggregator
-    size::UInt64
+    size::Int64
     function Work(intervals::NTuple{N, Interval}, aggregator::Aggregator = Aggregators.Min, precision::Int = 3) where {N}
         size = wsize(intervals, precision)
         new{N}(intervals, aggregator, size)
@@ -28,7 +28,7 @@ end
 function calc_partitions_per_interval(self::Work{N}, min_batches::Integer) where {N}
     curr_partitions_per_interval = fill(1, N)
 
-    for interval_pos in 1:length(self.intervals)
+    for interval_pos in 1:N
         missing_partitions = calc_amount_of_missing_partitions(min_batches, curr_partitions_per_interval)
         elements = isize(self.intervals[interval_pos])
         if elements > missing_partitions
@@ -42,30 +42,24 @@ function calc_partitions_per_interval(self::Work{N}, min_batches::Integer) where
 end
 
 function unfold(self::Work{3}, precision::Integer = -1)
-    current = [self.intervals[1].istart, self.intervals[2].istart, self.intervals[3].istart]
-    started = false
+    values::Vector{NTuple{3, Float64}} = Vector{NTuple{3, Float64}}(undef, self.size)
+    values[1] = (self.intervals[1].istart, self.intervals[2].istart, self.intervals[3].istart)
 
-    function get_next()::Tuple{Float64, Float64, Float64}
-        if !started
-            started = true
-            return (current[1], current[2], current[3])
-        end
-        for (i, curr_val) in enumerate(current)
+    for pos in 2:self.size
+        for (i, curr_val) in enumerate(values[pos - 1])
             start = Intervals.round_number(self.intervals[i].istart, precision)
             _end = Intervals.round_number(self.intervals[i].iend, precision)
             step = Intervals.round_number(self.intervals[i].istep, precision)
             if curr_val + step < _end
-                current[i] = Intervals.round_number(curr_val + step, precision)
+                values[pos] = (curr_val + step, values[pos - 1][2], values[pos - 1][3])
                 break
             else
-                current[i] = start
+                values[pos] = (start, values[pos - 1][2], values[pos - 1][3])
             end
         end
-        (current[1], current[2], current[3])
     end
-    (get_next() for _ in 1:self.size)
+    values
 end
-
 
 function split(self::Work{N}, max_chunk_size::Integer, precision::Int = -1) where {N}
     min_batches = ceil(Int, self.size / max_chunk_size)
@@ -96,12 +90,11 @@ function evaluate_for(f::Function, self::Work{3})
     evaluate_for!(f, self, results)
 end
 
-function evaluate_for!(f::Function, self::Work{3}, results::Vector{Tuple{Params, Float64}})
+function evaluate_for!(f::Function, self::Work{3}, results::Vector)
     for (i, params) in enumerate(unfold(self, 3))
-        params_converted = (params...,)
-        results[i] = (params_converted, f(params_converted))
+        results[i] = (params, f(params))
     end
-    # aggregate(self.aggregator, results)
+    aggregate(self.aggregator, results)
 end
 
 

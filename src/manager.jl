@@ -1,10 +1,11 @@
-# include("initialize.jl")
+include("initialize.jl")
 using Distributed
-
-using Pkg
-Pkg.add("ProgressMeter")
-Pkg.instantiate()
-using ProgressMeter
+@everywhere begin
+	using Pkg
+	Pkg.add("ProgressMeter")
+	Pkg.instantiate()
+	using ProgressMeter
+end
 
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
@@ -14,8 +15,8 @@ using .Intervals
 using .Aggregators
 using .Works
 
-@everywhere const MAX_CHUNK_SIZE::Integer = 1500000
-@everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, MAX_CHUNK_SIZE)
+@everywhere const MAX_CHUNK_SIZE::Integer = 10800000
+@everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
 
 
 function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
