@@ -90,15 +90,7 @@ function main()
 	println("Got sub_works")
 	pool = WorkerPool(workers())
 
-	partial_results = @time distribute_work(sub_works_parts, pool)
-	
-	# Although the code is fast, there is a bug somewhere, because the results are not correct
-	for partial_result in partial_results
-		for result in partial_result
-			println(result)
-		end
-	end
-	
+	partial_results = @time distribute_work(sub_works_parts, pool)	
 end
 
 main()
