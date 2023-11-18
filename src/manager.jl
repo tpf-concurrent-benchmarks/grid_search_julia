@@ -7,6 +7,8 @@ using Distributed
 	using ProgressMeter
 end
 
+@everywhere macro INTERVALS() return :(3) end
+
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
 @everywhere include("Works.jl")
@@ -15,11 +17,10 @@ using .Intervals
 using .Aggregators
 using .Works
 
-@everywhere const MAX_CHUNK_SIZE::Integer = 10000
+@everywhere const MAX_CHUNK_SIZE::Integer = 10000000
 @everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
 
-
-function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
+function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
 	count = 0
 	for (_, value, params_amount) in results
@@ -44,7 +45,7 @@ function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregato
 	return (max_val, max_params)
 end
 
-function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Min})
+function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Min})
 	min_val = Inf
 	min_params = Params((0.0, 0.0, 0.0))
 	for (params, value, _) in results
@@ -80,17 +81,18 @@ function distribute_work(sub_works_parts, pool)
 end
 
 function main()
-	precompile(Works.evaluate_for, (Works.Work{3},))
-	work = Work((Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3)), Aggregators.Min)
+	precompile(Works.unfold, (Works.Work, Int))
+
+	work = Work((Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
 	sub_works = @time Works.split(work, MAX_CHUNK_SIZE, 3)
 	sub_works_parts = Iterators.partition(sub_works, 10)
 
 	println("Got sub_works")
 	pool = WorkerPool(workers())
 
-	partial_results = @time distribute_work(sub_works_parts, pool)	
+	partial_results = @time distribute_work(sub_works_parts, pool)
 end
 
 main()
