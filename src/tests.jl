@@ -10,12 +10,12 @@ using ..Aggregators
 
 
 function assert_work_is_split_correctly(work::Work{N}, max_chunk_size::Integer) where {N}
-    unfolded_work = map(copy, Works.unfold(work, 5))
+    unfolded_work = Works.unfold(work, 5)
     split_work = Works.split(work, max_chunk_size, 5)
 
     unfolded_split_work = []
     for w in split_work
-        unfolded_split_work = append!(unfolded_split_work, map(copy,Works.unfold(w, 5)))
+        unfolded_split_work = append!(unfolded_split_work, Works.unfold(w, 5))
     end
 
     for w in unfolded_split_work
@@ -63,7 +63,7 @@ function run_tests()
     assert_work_is_split_correctly(Work((Interval(-10, 0, 3), )), 2)
     assert_work_is_split_correctly(Work((Interval(0, 10, 4.3), )), 3)
 
-    
+
     assert_work_is_split_correctly(Work((Interval(544, 600, 2.0, 3), )), 4)
     
     assert_work_is_split_correctly(Work((Interval(-10, 0, 4.3), )), 3)
@@ -76,25 +76,21 @@ function run_tests()
                                          Interval(0, 10, 1),
                                          Interval(0, 10, 1))), 13)
 
-    assert_work_is_split_correctly(
-        Work((Interval(0.0, 12.3, 8.4, 5),
-              Interval(5.3, 8.99, 1.2, 5),
-              Interval(3.0, 3.3, 0.1, 5))), 5)
+    assert_work_is_split_correctly(Work((Interval(0.0, 12.3, 8.4, 5),
+                                         Interval(5.3, 8.99, 1.2, 5),
+                                         Interval(3.0, 3.3, 0.1, 5))), 5)
 
 
-    assert_work_is_split_correctly(
-        Work((Interval(0, 12.3, 8.4),
-              Interval(5.3, 8.99, 1.2),
-              Interval(3, 3.3, 0.1),
-              Interval(0, 12.3, 8.4))), 5)
+    assert_work_is_split_correctly(Work((Interval(0, 12.3, 8.4),
+                                         Interval(5.3, 8.99, 1.2),
+                                         Interval(3, 3.3, 0.1),
+                                         Interval(0, 12.3, 8.4))), 5)
 
-              assert_work_is_split_correctly(
-                Work((Interval(-6.5, -5, 0.01), )), 5)
+    assert_work_is_split_correctly(Work((Interval(-6.5, -5, 0.01), )), 5)
                 
-                assert_work_is_split_correctly(
-        Work((Interval(0, 12, 3),
-              Interval(-8, 4, 2),
-              Interval(3, 12, 3))), 5)
+    assert_work_is_split_correctly(Work((Interval(0, 12, 3),
+                                         Interval(-8, 4, 2),
+                                         Interval(3, 12, 3))), 5)
     
     assert_interval_is_split_correctly(Interval(544, 600, 2.0), 9)
     

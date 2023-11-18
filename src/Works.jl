@@ -46,15 +46,51 @@ function unfold(self::Work{3}, precision::Integer = -1)
     values[1] = (self.intervals[1].istart, self.intervals[2].istart, self.intervals[3].istart)
 
     for pos in 2:self.size
+        values[pos] = values[pos - 1]
         for (i, curr_val) in enumerate(values[pos - 1])
             start = Intervals.round_number(self.intervals[i].istart, precision)
             _end = Intervals.round_number(self.intervals[i].iend, precision)
             step = Intervals.round_number(self.intervals[i].istep, precision)
             if curr_val + step < _end
-                values[pos] = (curr_val + step, values[pos - 1][2], values[pos - 1][3])
+                if i == 1
+                    values[pos] = (curr_val + step, values[pos][2], values[pos][3])
+                elseif i == 2
+                    values[pos] = (values[pos][1], curr_val + step, values[pos][3])
+                elseif i == 3
+                    values[pos] = (values[pos][1], values[pos][2], curr_val + step)
+                end
                 break
             else
-                values[pos] = (start, values[pos - 1][2], values[pos - 1][3])
+                if i == 1
+                    values[pos] = (start, values[pos][2], values[pos][3])
+                elseif i == 2
+                    values[pos] = (values[pos][1], start, values[pos][3])
+                elseif i == 3
+                    values[pos] = (values[pos][1], values[pos - 1][2], start)
+                end
+            end
+        end
+    end
+    values
+end
+
+function unfold(self::Work{N}, precision::Integer = -1) where {N}
+    values::Vector{NTuple{N, Float64}} = Vector{NTuple{N, Float64}}(undef, self.size)
+    values[1] = map(interval -> interval.istart, self.intervals)
+
+    for pos in 2:self.size
+        values[pos] = values[pos - 1]
+        for (i, curr_val) in enumerate(values[pos - 1])
+            start = Intervals.round_number(self.intervals[i].istart, precision)
+            _end = Intervals.round_number(self.intervals[i].iend, precision)
+            step = Intervals.round_number(self.intervals[i].istep, precision)
+            if curr_val + step < _end
+                updated = Intervals.round_number(curr_val + step, precision)
+                values[pos] = (values[pos][1:i-1]..., updated, values[pos][i+1:N]...)
+                break
+            else
+                updated = Intervals.round_number(start, precision)
+                values[pos] = (values[pos][1:i-1]..., updated, values[pos][i+1:N]...)
             end
         end
     end
@@ -64,7 +100,6 @@ end
 function split(self::Work{N}, max_chunk_size::Integer, precision::Int = -1) where {N}
     min_batches = ceil(Int, self.size / max_chunk_size)
     partitions_per_interval = calc_partitions_per_interval(self, min_batches)
-    println("Partitions per interval: $partitions_per_interval")
 
     iterators = Vector{Vector{Interval}}(undef, length(self.intervals))
 
@@ -94,7 +129,8 @@ function evaluate_for!(f::Function, self::Work{3}, results::Vector)
     for (i, params) in enumerate(unfold(self, 3))
         results[i] = (params, f(params))
     end
-    aggregate(self.aggregator, results, self.size)
+    ret = aggregate(self.aggregator, results, self.size)
+    ret
 end
 
 
