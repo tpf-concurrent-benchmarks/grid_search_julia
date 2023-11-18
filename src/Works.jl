@@ -10,7 +10,7 @@ struct Work{N}
     intervals::NTuple{N, Interval}
     aggregator::Aggregator
     size::UInt64
-    function Work(intervals::NTuple{N, Interval}, aggregator::Aggregator, precision::Int = 3) where {N}
+    function Work(intervals::NTuple{N, Interval}, aggregator::Aggregator = Aggregators.Min, precision::Int = 3) where {N}
         size = wsize(intervals, precision)
         new{N}(intervals, aggregator, size)
     end
