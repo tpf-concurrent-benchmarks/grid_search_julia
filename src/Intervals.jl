@@ -110,7 +110,7 @@ function split_eager_rec!(self::Interval,
                     remaining_amount_of_sub_intervals,
                     precision,
                     sub_intervals,
-                    amount_of_sub_intervals_of_full_size + 1)
+                    amount_of_sub_intervals_of_full_size + start_pos)
     
     sub_intervals
 end
