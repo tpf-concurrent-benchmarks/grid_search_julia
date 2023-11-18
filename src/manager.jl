@@ -61,13 +61,6 @@ function aggregate_results(results::Vector{Aggregators.Result}, aggregator::Aggr
 	aggregate_results(results, Val(aggregator))
 end
 
-function griewank_func(params::Aggregators.Params)
-	a = params[1]
-	b = params[2]
-	c = params[3]
-	a + b + c
-end
-
 @everywhere function evaluate_for_partition(sub_work_partition)
 	map(sub_work_partition) do sub_work
 		Works.evaluate_for!(sub_work, RESULTS)
