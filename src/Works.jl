@@ -50,7 +50,7 @@ function unfold(self::Work, precision::Integer = -1)
     values[1, :] = collect(map(interval -> interval.istart, self.intervals))
 
     for pos in 2:self.size
-        values[pos] = values[pos - 1]
+        values[pos, :] = values[pos - 1, :]
         for (i, curr_val) in enumerate(values[pos - 1])
             start = Intervals.round_number(self.intervals[i].istart, precision)
             _end = Intervals.round_number(self.intervals[i].iend, precision)
