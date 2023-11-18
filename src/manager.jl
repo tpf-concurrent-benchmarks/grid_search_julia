@@ -1,18 +1,21 @@
 # include("initialize.jl")
-# using Distributed
+using Distributed
 
 using Pkg
 Pkg.add("ProgressMeter")
 Pkg.instantiate()
 using ProgressMeter
 
-include("Intervals.jl")
-include("Aggregators.jl")
-include("Works.jl")
+@everywhere include("Intervals.jl")
+@everywhere include("Aggregators.jl")
+@everywhere include("Works.jl")
 
 using .Intervals
 using .Aggregators
 using .Works
+
+@everywhere const MAX_CHUNK_SIZE::Integer = 1500000
+@everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, MAX_CHUNK_SIZE)
 
 
 function aggregate_results(results:: Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
@@ -63,31 +66,31 @@ function griewank_func(params::Aggregators.Params)
 	a + b + c
 end
 
-function evaluate_for_partition(sub_work_partition)
-	map(Works.evaluate_for, sub_work_partition)
+@everywhere function evaluate_for_partition(sub_work_partition)
+	map(sub_work_partition) do sub_work
+		Works.evaluate_for!(sub_work, RESULTS)
+	end
 end
 
-function distribute_work(sub_works_parts)
-	@showprogress map(sub_works_parts) do sub_works_part
-		evaluate_for_partition(sub_works_part)
+function distribute_work(sub_works_parts, pool)
+	@showprogress pmap(pool, sub_works_parts) do sub_work_partition
+		evaluate_for_partition(sub_work_partition)
 	end
 end
 
 function main()
 	precompile(Works.evaluate_for, (Works.Work{3},))
-
-	work = Work((Interval(-600, 600, 1, 3),
-				 Interval(-600, 600, 1, 3),
-				 Interval(-600, 600, 1, 3)), Aggregators.Min)
-	sub_works = @time collect(Works.split(work, 200000, 3))
+	work = Work((Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
+	sub_works = @time Works.split(work, MAX_CHUNK_SIZE, 3)
 	sub_works_parts = Iterators.partition(sub_works, 10)
 
 	println("Got sub_works")
-	# w = workers()
-	# pool = WorkerPool(w)
+	pool = WorkerPool(workers())
 
-	results = @time distribute_work(sub_works_parts)
+	results = @time distribute_work(sub_works_parts, pool)
 	# println("Amount of results: $(length(results))")
 end
 
-# main()
+main()

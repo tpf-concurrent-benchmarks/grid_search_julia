@@ -41,17 +41,14 @@ function calc_partitions_per_interval(self::Work{N}, min_batches::Integer) where
     curr_partitions_per_interval
 end
 
-# Always returns the same pointer, but the values are updated
-# So values should be used or copied before calling this function again
-# And it's not thread safe
-function unfold(self::Work{N}, precision::Integer = -1) where {N}
-    current = collect(map(i -> i.istart, self.intervals))
+function unfold(self::Work{3}, precision::Integer = -1)
+    current = [self.intervals[1].istart, self.intervals[2].istart, self.intervals[3].istart]
     started = false
 
-    get_next = function()
+    function get_next()::Tuple{Float64, Float64, Float64}
         if !started
             started = true
-            return current
+            return (current[1], current[2], current[3])
         end
         for (i, curr_val) in enumerate(current)
             start = Intervals.round_number(self.intervals[i].istart, precision)
@@ -64,14 +61,16 @@ function unfold(self::Work{N}, precision::Integer = -1) where {N}
                 current[i] = start
             end
         end
-        current
+        (current[1], current[2], current[3])
     end
     (get_next() for _ in 1:self.size)
 end
 
+
 function split(self::Work{N}, max_chunk_size::Integer, precision::Int = -1) where {N}
     min_batches = ceil(Int, self.size / max_chunk_size)
     partitions_per_interval = calc_partitions_per_interval(self, min_batches)
+    println("Partitions per interval: $partitions_per_interval")
 
     iterators = Vector{Vector{Interval}}(undef, length(self.intervals))
 
@@ -88,19 +87,24 @@ function __griewanc_func(params::Params)
     1/4000 * (a^2 + b^2 + c^2) - cos(a) * cos(b / sqrt(2)) * cos(c / sqrt(3)) + 1
 end
 
-function evaluate_for(self::Work{3})
-    evaluate_for(__griewanc_func, self)
+function evaluate_for!(self::Work{3}, results::Vector{Tuple{Params, Float64}})
+    evaluate_for!(__griewanc_func, self, results)
 end
 
-function evaluate_for(f::Function, self::Work{N}) where {N}
+function evaluate_for(f::Function, self::Work{3})
     results = Vector{Tuple{Params, Float64}}(undef, self.size)
-    for (i, params) in enumerate(unfold(self))
+    evaluate_for!(f, self, results)
+end
+
+function evaluate_for!(f::Function, self::Work{3}, results::Vector{Tuple{Params, Float64}})
+    for (i, params) in enumerate(unfold(self, 3))
         params_converted = (params...,)
-        # print("params_converted: $params_converted\n")
         results[i] = (params_converted, f(params_converted))
     end
-    aggregate(self.aggregator, results)
+    # aggregate(self.aggregator, results)
 end
+
+
 
 
 struct WorkPlan

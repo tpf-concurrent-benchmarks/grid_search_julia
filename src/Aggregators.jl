@@ -15,7 +15,9 @@ struct Result
 end
 
 function aggregate(aggregator::Aggregator, values::Vector{Tuple{Params, Float64}})
-    aggregate(Val(aggregator), values)
+    ret = aggregate(Val(aggregator), values)
+    # free values from memory
+    
 end
 
 function aggregate(::Val{Mean}, values::Vector{Tuple{Params, Float64}})
