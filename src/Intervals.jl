@@ -43,27 +43,7 @@ function split_evenly(self::Interval, amount_of_sub_intervals::Int, precision::I
 end
 
 function split(self::Interval, amount_of_sub_intervals::Int, precision::Int = -1)
-    if (isize(self, precision) % amount_of_sub_intervals == 0)
-        return split_evenly(self, amount_of_sub_intervals, precision)
-    end
-    size = isize(self, precision)
-    max_elems_per_interval = ceil(size / amount_of_sub_intervals)
-    amount_of_sub_intervals_of_full_size = floor(Int, (size - amount_of_sub_intervals) / (max_elems_per_interval - 1))
-    sub_end = 0.0
-    make_sub_intervals_of_full_size = function(pos)
-        sub_start = round_number(self.istart + pos * max_elems_per_interval * self.istep, precision)
-        sub_end = round_number(min(self.iend, sub_start + max_elems_per_interval * self.istep), precision)
-        Interval(sub_start, sub_end, self.istep, precision)
-    end
-    last_sub_end = round_number(self.istart + amount_of_sub_intervals_of_full_size * max_elems_per_interval * self.istep, precision)
-
-    remaining_interval = Interval(last_sub_end, self.iend, self.istep, precision)
-    remaining_amount_of_sub_intervals = amount_of_sub_intervals - amount_of_sub_intervals_of_full_size
-
-    intervals_of_full_size = (make_sub_intervals_of_full_size(pos) for pos in 0:amount_of_sub_intervals_of_full_size - 1)
-    remaining_intervals = split(remaining_interval, remaining_amount_of_sub_intervals, precision)
-
-    Iterators.flatten([intervals_of_full_size, remaining_intervals])
+  split_eager(self, amount_of_sub_intervals, precision)
 end
 
 function split_evenly_eager!(self::Interval,
@@ -110,7 +90,7 @@ function split_eager_rec!(self::Interval,
                     remaining_amount_of_sub_intervals,
                     precision,
                     sub_intervals,
-                    amount_of_sub_intervals_of_full_size + 1)
+                    amount_of_sub_intervals_of_full_size + start_pos)
     
     sub_intervals
 end

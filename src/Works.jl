@@ -10,7 +10,7 @@ struct Work{N}
     intervals::NTuple{N, Interval}
     aggregator::Aggregator
     size::UInt64
-    function Work(intervals::NTuple{N, Interval}, aggregator::Aggregator, precision::Int = 3) where {N}
+    function Work(intervals::NTuple{N, Interval}, aggregator::Aggregator = Aggregators.Min, precision::Int = 3) where {N}
         size = wsize(intervals, precision)
         new{N}(intervals, aggregator, size)
     end
@@ -41,6 +41,9 @@ function calc_partitions_per_interval(self::Work{N}, min_batches::Integer) where
     curr_partitions_per_interval
 end
 
+# Always returns the same pointer, but the values are updated
+# So values should be used or copied before calling this function again
+# And it's not thread safe
 function unfold(self::Work{N}, precision::Integer = -1) where {N}
     current = collect(map(i -> i.istart, self.intervals))
     started = false
@@ -67,14 +70,13 @@ function unfold(self::Work{N}, precision::Integer = -1) where {N}
 end
 
 function split(self::Work{N}, max_chunk_size::Integer, precision::Int = -1) where {N}
-    println("Splitting with $N intervals")
     min_batches = ceil(Int, self.size / max_chunk_size)
     partitions_per_interval = calc_partitions_per_interval(self, min_batches)
 
     iterators = Vector{Vector{Interval}}(undef, length(self.intervals))
 
     for (interval_pos, interval) in enumerate(self.intervals)
-        iterators[interval_pos] = @time Intervals.split_eager(interval, partitions_per_interval[interval_pos], precision)
+        iterators[interval_pos] = Intervals.split_eager(interval, partitions_per_interval[interval_pos], precision)
     end
     make_iterator(WorkPlan(iterators, self.aggregator))
 end
