@@ -10,12 +10,12 @@ using ..Aggregators
 
 
 function assert_work_is_split_correctly(work::Work{N}, max_chunk_size::Integer) where {N}
-    unfolded_work = collect(Works.unfold(work, 5))
-    split_work = @time Works.split(work, max_chunk_size, 5)
+    unfolded_work = map(copy, Works.unfold(work, 5))
+    split_work = Works.split(work, max_chunk_size, 5)
 
     unfolded_split_work = []
     for w in split_work
-        unfolded_split_work = append!(unfolded_split_work, collect(Works.unfold(w, 5)))
+        unfolded_split_work = append!(unfolded_split_work, map(copy,Works.unfold(w, 5)))
     end
 
     for w in unfolded_split_work
@@ -32,7 +32,7 @@ end
 
 function assert_interval_is_split_correctly(interval::Interval, partitions::Integer)
   unfolded_interval = collect(Intervals.unfold(interval))
-  split_interval = @time Intervals.split_eager(work, partitions, 5)
+  split_interval = Intervals.split_eager(interval, partitions, 5)
 
   unfolded_split_intervals = []
   for i in split_interval
@@ -43,7 +43,7 @@ function assert_interval_is_split_correctly(interval::Interval, partitions::Inte
       if !(i in unfolded_interval)
           error("$i is not in unfolded_interval - $unfolded_interval")
       else
-          deleteat!(unfolded_interval, findfirst(x -> x == w, unfolded_interval))
+          deleteat!(unfolded_interval, findfirst(x -> x == i, unfolded_interval))
       end
   end
   if length(unfolded_interval) > 0
@@ -89,14 +89,14 @@ function run_tests()
               Interval(0, 12.3, 8.4))), 5)
 
               assert_work_is_split_correctly(
-                Work((Interval(-6.5, -5, 0.01))), 5)
+                Work((Interval(-6.5, -5, 0.01), )), 5)
                 
                 assert_work_is_split_correctly(
         Work((Interval(0, 12, 3),
               Interval(-8, 4, 2),
               Interval(3, 12, 3))), 5)
     
-    assert_interval_is_split_correctly(Interval(0, 10, 4.3), 9)
+    assert_interval_is_split_correctly(Interval(544, 600, 2.0), 9)
     
     println("All tests passed!")
 end
