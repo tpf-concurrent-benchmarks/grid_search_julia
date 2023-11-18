@@ -1,5 +1,4 @@
 include("initialize.jl")
-
 using Distributed
 @everywhere begin
 	using Pkg
@@ -14,9 +13,9 @@ end
 @everywhere include("Aggregators.jl")
 @everywhere include("Works.jl")
 
-@everywhere using .Intervals
-@everywhere using .Aggregators
-@everywhere using .Works
+using .Intervals
+using .Aggregators
+using .Works
 
 @everywhere const MAX_CHUNK_SIZE::Integer = 10000000
 @everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
@@ -82,16 +81,18 @@ function distribute_work(sub_works_parts, pool)
 end
 
 function main()
-	work = Work([Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3),
-				 Interval(-600, 600, 5, 3)], Aggregators.Min)
-	sub_works = @time Works.split(work, 108000, 3)
+	precompile(Works.unfold, (Works.Work, Int))
+
+	work = Work((Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3),
+				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
+	sub_works = @time Works.split(work, MAX_CHUNK_SIZE, 3)
+	sub_works_parts = Iterators.partition(sub_works, 10)
+
 	println("Got sub_works")
 	pool = WorkerPool(workers())
 
 	partial_results = @time distribute_work(sub_works_parts, pool)
 end
-
-GC.enable_logging(true)
 
 main()
