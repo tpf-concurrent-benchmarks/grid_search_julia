@@ -105,7 +105,7 @@ end
 
 function evaluate_for!(f::Function, self::Work, results::Vector)
     for (i, params) in enumerate(eachrow(unfold(self)))
-        params_converted = (params[1], params[2], params[3])
+        params_converted = ntuple(j -> params[j], @INTERVALS)
         results[i] = (params_converted, f(params_converted))
     end
     aggregate(self.aggregator, results, self.size)
