@@ -20,24 +20,25 @@ services:
     depends_on:
       - graphite
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.0
-    command: >
-      -storage_driver="statsd"
-      -storage_driver_host="graphite:8125"
-      -storage_driver_db="cadvisor"
-      -storage_driver_buffer_duration="10s"
-      --enable_metrics=cpu,cpuLoad,disk,diskIO,memory,network
-    depends_on:
-      - graphite
-    volumes:
-      - "/:/rootfs:ro"
-      - "/var/run:/var/run:rw"
-      - "/sys:/sys:ro"
-      - "/var/lib/docker/:/var/lib/docker:ro"
-      - "/dev/disk/:/dev/disk:ro"
-    devices:
-      - "/dev/kmsg"
+  # FIXME: Program metrics not received w/ cadvisor running
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:v0.47.0
+  #   command: >
+  #     -storage_driver="statsd"
+  #     -storage_driver_host="graphite:8125"
+  #     -storage_driver_db="cadvisor"
+  #     -storage_driver_buffer_duration="10s"
+  #     --enable_metrics=cpu,cpuLoad,disk,diskIO,memory,network
+  #   depends_on:
+  #     - graphite
+  #   volumes:
+  #     - "/:/rootfs:ro"
+  #     - "/var/run:/var/run:rw"
+  #     - "/sys:/sys:ro"
+  #     - "/var/lib/docker/:/var/lib/docker:ro"
+  #     - "/dev/disk/:/dev/disk:ro"
+  #   devices:
+  #     - "/dev/kmsg"
 
   renderer:
     image: grafana/grafana-image-renderer:latest
@@ -54,10 +55,10 @@ services:
         target: /opt/app/ips
         read_only: false
     deploy:
-      replicas: 4
+      replicas: 2
       resources:
         limits:
-          memory: 3G
+          memory: 2G
       restart_policy:
         condition: none
     environment:
@@ -65,7 +66,6 @@ services:
       - NODE_ID=worker_{{.Task.Slot}}
       - TASK_SLOT={{.Task.Slot}}
     command: /bin/bash -c "echo $$(hostname -i) > /opt/app/ips/ip_$$TASK_SLOT.txt && /usr/sbin/sshd -D"
-
 
   manager:
     image: julia_manager

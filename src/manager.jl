@@ -12,10 +12,12 @@ end
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
 @everywhere include("Works.jl")
+@everywhere include("StatsLogger.jl")
 
 using .Intervals
 using .Aggregators
 using .Works
+using .StatsLogger
 
 @everywhere const MAX_CHUNK_SIZE::Integer = 10000000
 @everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
@@ -63,6 +65,7 @@ end
 
 @everywhere function evaluate_for_partition(sub_work_partition)
 	map(sub_work_partition) do sub_work
+    StatsLogger.increment("sub_work", 1)
 		Works.evaluate_for!(sub_work, RESULTS)
 	end
 end
@@ -92,4 +95,4 @@ function main()
   println("Result: $agg")
 end
 
-main()
+StatsLogger.runAndMeasure("grid_search", main)
