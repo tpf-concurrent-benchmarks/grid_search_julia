@@ -46,12 +46,16 @@ end
 
 function unfold(self::Work, precision::Integer = -1)
     values = Array{Float64, 2}(undef, self.size, @INTERVALS)
-
-    values[1, :] = collect(map(interval -> interval.istart, self.intervals))
+    
+    for i in 1:@INTERVALS
+        values[1, i] = self.intervals[i].istart
+    end
 
     for pos in 2:self.size
-        values[pos, :] = values[pos - 1, :]
-        for (i, curr_val) in enumerate(values[pos - 1])
+        for i in 1:@INTERVALS
+            values[pos, i] = values[pos - 1, i]
+        end
+        for (i, curr_val) in enumerate(@view values[pos - 1, :])
             start = Intervals.round_number(self.intervals[i].istart, precision)
             _end = Intervals.round_number(self.intervals[i].iend, precision)
             step = Intervals.round_number(self.intervals[i].istep, precision)
