@@ -1,8 +1,10 @@
 module Aggregators
 
-export Aggregator, Params, aggregate
+export Params, aggregate, Mean, Max, Min, Result
 
-@enum Aggregator Mean Max Min
+const Mean = 0x00
+const Max = 0x01
+const Min = 0x02
 
 Params = NTuple{3, Float64}
 
@@ -14,11 +16,19 @@ struct Result
     Result(value::Float64, count::Int) = new((0.0, 0.0, 0.0), value, count)
 end
 
-function aggregate(aggregator::Aggregator, values::Vector{Tuple{Params, Float64}}, size::Integer)
-    aggregate(Val(aggregator), values, size)
+function aggregate(aggregator::UInt8, values::Vector{Tuple{Params, Float64}}, size::Integer)
+    if aggregator == Mean
+        return aggregate_mean(values, size)
+    elseif aggregator == Max
+        return aggregate_max(values, size)
+    elseif aggregator == Min
+        return aggregate_min(values, size)
+    else
+        error("Unknown aggregator")
+    end
 end
 
-function aggregate(::Val{Mean}, values::Vector{Tuple{Params, Float64}}, size::Integer)
+function aggregate_mean(values::Vector{Tuple{Params, Float64}}, size::Integer)
     mean = 0.0
     count = 0
     for (_, value) in @view values[1:size]
@@ -28,7 +38,7 @@ function aggregate(::Val{Mean}, values::Vector{Tuple{Params, Float64}}, size::In
     return Result(mean, count)
 end
 
-function aggregate(::Val{Max}, values::Vector{Tuple{Params, Float64}}, size::Integer)
+function aggregate_max(values::Vector{Tuple{Params, Float64}}, size::Integer)
     max_val = -Inf
     max_params = Params((0.0, 0.0, 0.0))
     for (params, value) in @view values[1:size]
@@ -40,16 +50,16 @@ function aggregate(::Val{Max}, values::Vector{Tuple{Params, Float64}}, size::Int
     return Result(max_params, max_val)
 end
 
-function aggregate(::Val{Min}, values::Vector{Tuple{Params, Float64}}, size::Integer)
+function aggregate_min(values::Vector{Tuple{Params, Float64}}, size::Integer)
     min_val = Inf
-    min_params = Params((0.0, 0.0, 0.0))
-    for (params, value) in @view values[1:size]
+    min_params_pos = 0
+    for (i, (_, value)) in enumerate(@view values[1:size])
         if value < min_val
             min_val = value
-            min_params = params
+            min_params_pos = i
         end
     end
-    return Result(min_params, min_val)
+    return Result(values[min_params_pos][1], min_val)
 end
 
 end

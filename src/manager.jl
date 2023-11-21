@@ -19,8 +19,9 @@ using .Aggregators
 using .Works
 using .StatsLogger
 
-@everywhere const MAX_CHUNK_SIZE::Integer = 10000000
-@everywhere RESULTS = Vector{Tuple{Aggregators.Params, Float64}}(undef, Int(2 * MAX_CHUNK_SIZE))
+@everywhere const MAX_CHUNK_SIZE::Int = 10800000
+@everywhere RESULTS::Vector{Tuple{Aggregators.Params, Float64}} = Vector{Tuple{Aggregators.Params, Float64}}(undef, MAX_CHUNK_SIZE)
+@everywhere VALUES::Array{Float64, 2} = Array{Float64, 2}(undef, MAX_CHUNK_SIZE, @INTERVALS)
 
 function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
@@ -59,14 +60,14 @@ function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregator
 	return (min_val, min_params)
 end
 
-function aggregate_results(results::Vector{Aggregators.Result}, aggregator::Aggregator)
+function aggregate_results(results::Vector{Aggregators.Result}, aggregator::UInt8)
 	aggregate_results(results, Val(aggregator))
 end
 
 @everywhere function evaluate_for_partition(sub_work_partition)
 	map(sub_work_partition) do sub_work
     StatsLogger.increment("sub_work", 1)
-		Works.evaluate_for!(sub_work, RESULTS)
+		Works.evaluate_for!(sub_work, VALUES, RESULTS)
 	end
 end
 
@@ -79,20 +80,20 @@ end
 function main()
 	precompile(Works.unfold, (Works.Work, Int))
 
-	work = Work((Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3),
-				 Interval(-600, 600, 0.2, 3)), Aggregators.Min)
-	sub_works = @time Works.split(work, MAX_CHUNK_SIZE, 3)
+	work = Work((Interval(-600, 600, 0.2),
+				 Interval(-600, 600, 0.2),
+				 Interval(-600, 600, 0.2)), Aggregators.Min)
+	sub_works = @time Works.split(work, MAX_CHUNK_SIZE)
 	sub_works_parts = Iterators.partition(sub_works, 10)
 
 	println("Got sub_works")
 	pool = WorkerPool(workers())
 
 	partial_results = @time distribute_work(sub_works_parts, pool)
-  flat_results = reduce(vcat, partial_results)
+	flat_results = reduce(vcat, partial_results)
 
-  agg = aggregate_results(flat_results, work.aggregator)
-  println("Result: $agg")
+	agg = aggregate_results(flat_results, work.aggregator)
+	println("Result: $agg")
 end
 
 StatsLogger.runAndMeasure("grid_search", main)
