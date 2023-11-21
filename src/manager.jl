@@ -14,11 +14,13 @@ end
 @everywhere include("Works.jl")
 @everywhere include("StatsLogger.jl")
 @everywhere include("Configs.jl")
+include("LoadWorkFromJson.jl")
 
 using .Intervals
 using .Aggregators
 using .Works
 using .StatsLogger
+using .LoadWorkFromJson
 
 @everywhere const MAX_CHUNK_SIZE::Int = 10800000
 @everywhere const LAX_MAX_CHUNK_SIZE::Int = 2*MAX_CHUNK_SIZE
@@ -27,7 +29,7 @@ using .StatsLogger
 
 
 @everywhere begin
-  const config = Configs.Config("config.env")
+  const config = Configs.Config("resources/config.env")
   StatsLogger.initialize(config.logger_ip, config.logger_port, config.logger_prefix)
 end
 
@@ -91,9 +93,7 @@ end
 function main()
 	precompile(Works.unfold, (Works.Work, Int))
 
-	work = Work((Interval(-600, 600, 1),
-				 Interval(-600, 600, 1),
-				 Interval(-600, 600, 1)), Aggregators.Min)
+	work = load_work(config.work_path)
 	sub_works = @time Works.split(work, MAX_CHUNK_SIZE)
 	sub_works_parts = Iterators.partition(sub_works, 10)
 
