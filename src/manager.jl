@@ -18,8 +18,9 @@ using .Aggregators
 using .Works
 
 @everywhere const MAX_CHUNK_SIZE::Int = 10800000
-@everywhere RESULTS::Vector{Tuple{Aggregators.Params, Float64}} = Vector{Tuple{Aggregators.Params, Float64}}(undef, MAX_CHUNK_SIZE)
-@everywhere VALUES::Array{Float64, 2} = Array{Float64, 2}(undef, MAX_CHUNK_SIZE, @INTERVALS)
+@everywhere const LAX_MAX_CHUNK_SIZE::Int = 2*MAX_CHUNK_SIZE
+@everywhere RESULTS::Vector{Tuple{Aggregators.Params, Float64}} = Vector{Tuple{Aggregators.Params, Float64}}(undef, LAX_MAX_CHUNK_SIZE)
+@everywhere VALUES::Array{Float64, 2} = Array{Float64, 2}(undef, LAX_MAX_CHUNK_SIZE, @INTERVALS)
 
 function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
@@ -77,9 +78,9 @@ end
 function main()
 	precompile(Works.unfold, (Works.Work, Int))
 
-	work = Work((Interval(-600, 600, 0.2),
-				 Interval(-600, 600, 0.2),
-				 Interval(-600, 600, 0.2)), Aggregators.Min)
+	work = Work((Interval(-600, 600, 1),
+				 Interval(-600, 600, 1),
+				 Interval(-600, 600, 1)), Aggregators.Min)
 	sub_works = @time Works.split(work, MAX_CHUNK_SIZE)
 	sub_works_parts = Iterators.partition(sub_works, 10)
 
