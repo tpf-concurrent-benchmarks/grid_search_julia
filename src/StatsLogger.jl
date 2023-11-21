@@ -4,10 +4,6 @@ using Sockets
 
 # Statsd Config
 
-const STATSD_HOST = "graphite"
-const STATSD_PORT = 8125
-const STATSD_PREFIX = "julia"
-
 # Statsd Client from https://github.com/glenn-m/Statsd.jl/blob/38ad7bb0b6b40af3ea711e4efc506072a99b32a7/src/Statsd.jl
 # MIT License: https://github.com/glenn-m/Statsd.jl/blob/38ad7bb0b6b40af3ea711e4efc506072a99b32a7/LICENSE
 
@@ -49,21 +45,26 @@ sc_set(sc::Client, metric, value, rate=nothing) = sc_metric(sc, "s", metric, val
 
 # Statsd Client Instance and module functions
 
-const statsd_client = Client(STATSD_HOST, STATSD_PORT, STATSD_PREFIX)
+statsd_client = nothing
+
+function initialize( host::String, port::Integer, prefix::String )
+  global statsd_client = Client(host, port, prefix)
+end
 
 function gauge( metric::String, value::Number )
   sc_gauge(statsd_client, metric, value)
 end
 
-function increment( metric::String, value::Number )
+function increment( metric::String, value::Number = 1)
   sc_incr(statsd_client, metric, value)  
 end
 
-function runAndMeasure( metric::String, f::Function )
+function runAndMeasure( f::Function, metric::String )
   start = time()
-  f()
+  res = f()
   elapsed = time() - start
   sc_timing(statsd_client, metric, elapsed)
+  return res
 end
 
 end

@@ -81,7 +81,6 @@ services:
         target: /opt/app/ips
         read_only: true
     deploy:
-      replicas: 1
       resources:
         limits:
           memory: 2G
@@ -89,7 +88,7 @@ services:
         condition: none
     environment:
       - LOCAL=${LOCAL}
-      - NODE_ID=worker_{{.Task.Slot}}
+      - NODE_ID=manager
 
 volumes:
   grafana_config:
