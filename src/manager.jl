@@ -12,15 +12,24 @@ end
 @everywhere include("Intervals.jl")
 @everywhere include("Aggregators.jl")
 @everywhere include("Works.jl")
+@everywhere include("StatsLogger.jl")
+@everywhere include("Configs.jl")
 
 using .Intervals
 using .Aggregators
 using .Works
+using .StatsLogger
 
 @everywhere const MAX_CHUNK_SIZE::Int = 10800000
 @everywhere const LAX_MAX_CHUNK_SIZE::Int = 2*MAX_CHUNK_SIZE
 @everywhere RESULTS::Vector{Tuple{Aggregators.Params, Float64}} = Vector{Tuple{Aggregators.Params, Float64}}(undef, LAX_MAX_CHUNK_SIZE)
 @everywhere VALUES::Array{Float64, 2} = Array{Float64, 2}(undef, LAX_MAX_CHUNK_SIZE, @INTERVALS)
+
+
+@everywhere begin
+  const config = Configs.Config("config.env")
+  StatsLogger.initialize(config.logger_ip, config.logger_port, config.logger_prefix)
+end
 
 function aggregate_results(results::Vector{Aggregators.Result}, ::Val{Aggregators.Mean})
 	mean = 0.0
@@ -65,7 +74,11 @@ end
 
 @everywhere function evaluate_for_partition(sub_work_partition)
 	map(sub_work_partition) do sub_work
-		Works.evaluate_for!(sub_work, VALUES, RESULTS)
+    res = StatsLogger.runAndMeasure("work_time") do
+      Works.evaluate_for!(sub_work, VALUES, RESULTS)
+    end
+    StatsLogger.increment("results_produced")
+		return res
 	end
 end
 
@@ -94,4 +107,4 @@ function main()
 	println("Result: $agg")
 end
 
-main()
+StatsLogger.runAndMeasure(main, "completion_time")

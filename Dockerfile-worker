@@ -18,6 +18,7 @@ COPY ./.keys/manager_rsa.pub /root/.ssh/authorized_keys
 RUN chmod 600 /root/.ssh/authorized_keys
 
 RUN julia -e 'using Pkg; Pkg.add("ProgressMeter")'
+RUN julia -e 'using Pkg; Pkg.add("Statsd")'
 
 EXPOSE 22
 

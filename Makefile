@@ -13,6 +13,8 @@ build:
 
 
 deploy: remove
+	mkdir -p graphite
+	mkdir -p grafana_config
 	docker stack deploy -c docker-compose.yaml gs_julia
 .PHONY: deploy
 
