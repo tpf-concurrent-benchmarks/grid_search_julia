@@ -1,4 +1,20 @@
-1. `make init`
-2. `make build`
-3. `make deploy`
-4. `make manager_bash`
+# Grid Search - Julia
+
+This is a Julia implementation of a system for performing a grid search under [common specifications](https://github.com/tpf-concurrent-benchmarks/docs/tree/main/grid_search) defined for multiple languages.
+
+The objective of this project is to benchmark the language on a real-world distributed system.
+
+## Deployment
+
+The project is deployed using docker swarm, `make init` initializes it, creates required directories and generates the required keys.
+
+`make build` will build the docker images.
+
+`make deploy` will deploy the system.
+
+`make manager_bash` will open a bash session on the manager, where the user can run the manager script: `julia manager.jl`
+
+## Implementation details
+
+- The system uses Julia's built-in distributed computing capabilities to distribute the tasks to the workers.
+- The workflow is defined as structured/functional code, and the tasks are divided using `pmap`.
