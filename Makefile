@@ -5,17 +5,27 @@ init:
 .PHONY: init
 
 build:
-	docker rmi -f julia_manager || true
-	docker rmi -f julia_worker || true
-	docker build -t julia_manager -f ./Dockerfile-manager .
-	docker build -t julia_worker -f ./Dockerfile-worker .
+	docker rmi -f grid_search_julia_manager || true
+	docker rmi -f grid_search_julia_worker || true
+	docker build -t grid_search_julia_manager -f ./Dockerfile-manager .
+	docker build -t grid_search_julia_worker -f ./Dockerfile-worker .
 .PHONY: build
 
+get_ips:
+	echo "Getting IPs of containers"
+	for id in $(shell docker ps -q -f name=gs_julia_worker); do \
+		echo "Getting IP of container $$id"; \
+		docker exec -it $$id bash -c "hostname -i > ips/ip_\$$TASK_SLOT"; \
+	done
+.PHONY: get_ips
 
 deploy: remove
 	mkdir -p graphite
 	mkdir -p grafana_config
-	docker stack deploy -c docker-compose.yaml gs_julia
+	until \
+	docker stack deploy -c docker-compose.yaml gs_julia; \
+	do sleep 1; done
+	make get_ips
 .PHONY: deploy
 
 remove:
