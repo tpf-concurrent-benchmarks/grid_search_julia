@@ -51,11 +51,14 @@ services:
     ports:
       - "8082:8081"
   worker:
-    image: julia_worker
+    image: grid_search_julia_worker
     tty: true
     stdin_open: true
     volumes:
       - "./src:/opt/app"
+      # The authorized_keys_ro file will be copied to authorized_keys
+      # This is because the sshd server won't use the file if it's owned by a different user
+      - "./.keys/manager_rsa.pub:/root/.ssh/authorized_keys_ro:ro"
       - type: bind
         source: ./ips
         target: /opt/app/ips
@@ -71,10 +74,13 @@ services:
       - LOCAL=${LOCAL}
       - NODE_ID=worker_{{.Task.Slot}}
       - TASK_SLOT={{.Task.Slot}}
-    command: /bin/bash -c "echo $$(hostname -i) > /opt/app/ips/ip_$$TASK_SLOT.txt && /usr/sbin/sshd -D"
+    
+    command: /bin/bash -c "\
+             cp /root/.ssh/authorized_keys_ro /root/.ssh/authorized_keys && \
+             /usr/sbin/sshd -D"
 
   manager:
-    image: julia_manager
+    image: grid_search_julia_manager
     tty: true
     stdin_open: true
     command: /bin/bash
@@ -82,6 +88,7 @@ services:
       - worker
     volumes:
       - "./src:/opt/app"
+      - "./.keys/manager_rsa:/root/.ssh/id_rsa:ro"
       - type: bind
         source: ./ips
         target: /opt/app/ips
