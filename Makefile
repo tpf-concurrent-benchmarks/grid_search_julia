@@ -12,9 +12,7 @@ build:
 .PHONY: build
 
 get_ips:
-	echo "Getting IPs of containers"
 	for id in $(shell docker ps -q -f name=gs_julia_worker); do \
-		echo "Getting IP of container $$id"; \
 		docker exec -it $$id bash -c "hostname -i > ips/ip_\$$TASK_SLOT"; \
 	done
 .PHONY: get_ips
@@ -29,7 +27,7 @@ deploy: remove
 .PHONY: deploy
 
 remove:
-	rm -f ./ips/*
+	sudo rm -f ./ips/*
 	if docker stack ls | grep -q gs_julia; then \
             docker stack rm gs_julia; \
 	fi
