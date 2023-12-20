@@ -106,6 +106,10 @@ services:
           memory: 2G
       restart_policy:
         condition: none
+      placement:
+        constraints:
+          - node.role == manager
+
     environment:
       - LOCAL=${LOCAL}
       - NODE_ID=manager
