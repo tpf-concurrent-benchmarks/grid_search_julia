@@ -11,19 +11,12 @@ build:
 	docker build -t grid_search_julia_worker -f ./Dockerfile-worker .
 .PHONY: build
 
-get_ips:
-	for id in $(shell docker ps -q -f name=gs_julia_worker); do \
-		docker exec -it $$id bash -c "hostname -i > ips/ip_\$$TASK_SLOT"; \
-	done
-.PHONY: get_ips
-
 deploy: remove
 	mkdir -p graphite
 	mkdir -p grafana_config
 	until \
 	docker stack deploy -c docker-compose.yaml gs_julia; \
 	do sleep 1; done
-	make get_ips
 .PHONY: deploy
 
 remove:
