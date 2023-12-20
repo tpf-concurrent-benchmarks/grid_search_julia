@@ -11,6 +11,10 @@ services:
       - "./graphite:/opt/graphite/storage/:rw"
     ports:
       - "8080:8080"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.0
@@ -52,11 +56,19 @@ services:
       - GF_LOG_FILTERS=rendering:debug
     depends_on:
       - graphite
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
 
   renderer:
     image: grafana/grafana-image-renderer:latest
     ports:
       - "8082:8081"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
   worker:
     image: grid_search_julia_worker
     tty: true
@@ -66,10 +78,6 @@ services:
       # The authorized_keys_ro file will be copied to authorized_keys
       # This is because the sshd server won't use the file if it's owned by a different user
       - "./.keys/manager_rsa.pub:/root/.ssh/authorized_keys_ro:ro"
-      - type: bind
-        source: ./ips
-        target: /opt/app/ips
-        read_only: false
     deploy:
       replicas: 2
       resources:
@@ -83,6 +91,7 @@ services:
       - TASK_SLOT={{.Task.Slot}}
     
     command: /bin/bash -c "\
+             counter=1; for ip in $(nslookup tasks.worker | awk '/^Address:/ && NR > 2 {print $2}'); do echo "$ip" > "ips/ip_${counter}"; ((counter++)); done
              cp /root/.ssh/authorized_keys_ro /root/.ssh/authorized_keys && \
              /usr/sbin/sshd -D"
 
@@ -99,7 +108,7 @@ services:
       - type: bind
         source: ./ips
         target: /opt/app/ips
-        read_only: true
+        read_only: false
     deploy:
       resources:
         limits:
