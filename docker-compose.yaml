@@ -91,9 +91,24 @@ services:
       - TASK_SLOT={{.Task.Slot}}
     
     command: /bin/bash -c "\
-             counter=1; for ip in $(nslookup tasks.worker | awk '/^Address:/ && NR > 2 {print $2}'); do echo "$ip" > "ips/ip_${counter}"; ((counter++)); done
              cp /root/.ssh/authorized_keys_ro /root/.ssh/authorized_keys && \
              /usr/sbin/sshd -D"
+
+  ips_getter:
+    image: efoppiano/ips_getter:v0.1
+    command: /bin/bash -c "sleep 10 && ./get_ips.sh"
+    volumes:
+      - "./get_ips.sh:/get_ips.sh:ro"
+      - type: bind
+        source: ./ips
+        target: /ips
+        read_only: false
+    deploy:
+      restart_policy:
+        condition: none
+      placement:
+        constraints:
+          - node.role == manager
 
   manager:
     image: grid_search_julia_manager
@@ -102,6 +117,7 @@ services:
     command: /bin/bash
     depends_on:
       - worker
+      - ips_getter
     volumes:
       - "./src:/opt/app"
       - "./.keys/manager_rsa:/root/.ssh/id_rsa:ro"
