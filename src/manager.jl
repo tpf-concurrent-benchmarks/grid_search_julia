@@ -93,6 +93,8 @@ end
 function main()
 	precompile(Works.unfold, (Works.Work, Int))
 
+	start = time()
+
 	work = load_work(config.work_path)
 	sub_works = @time Works.split(work, MAX_CHUNK_SIZE)
 	sub_works_parts = Iterators.partition(sub_works, 10)
@@ -104,7 +106,9 @@ function main()
 	flat_results = reduce(vcat, partial_results)
 
 	agg = aggregate_results(flat_results, work.aggregator)
+	
+	elapsed = time() - start
+	StatsLogger.gauge("completion_time", elapsed)
+
 	println("Result: $agg")
 end
-
-StatsLogger.runAndMeasure(main, "completion_time")
