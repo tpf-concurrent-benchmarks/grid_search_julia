@@ -112,3 +112,5 @@ function main()
 
 	println("Result: $agg")
 end
+
+main()
