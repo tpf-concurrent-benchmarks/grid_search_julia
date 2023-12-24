@@ -79,7 +79,7 @@ services:
       # This is because the sshd server won't use the file if it's owned by a different user
       - "./.keys/manager_rsa.pub:/root/.ssh/authorized_keys_ro:ro"
     deploy:
-      replicas: 2
+      replicas: ${WORKER_REPLICAS}
       resources:
         limits:
           memory: 2G

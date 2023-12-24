@@ -1,3 +1,5 @@
+WORKER_REPLICAS=4
+
 init:
 	mkdir -p ./.keys
 	mkdir -p ./ips
@@ -15,6 +17,7 @@ deploy: remove
 	mkdir -p graphite
 	mkdir -p grafana_config
 	until \
+	WORKER_REPLICAS=$(WORKER_REPLICAS) \
 	docker stack deploy -c docker-compose.yaml gs_julia; \
 	do sleep 1; done
 .PHONY: deploy
