@@ -62,7 +62,7 @@ end
 function runAndMeasure( f::Function, metric::String )
   start = time()
   res = f()
-  elapsed = time() - start
+  elapsed = 1000 * (time() - start)
   sc_timing(statsd_client, metric, elapsed)
   return res
 end

@@ -107,7 +107,7 @@ function main()
 
 	agg = aggregate_results(flat_results, work.aggregator)
 	
-	elapsed = time() - start
+	elapsed = 1000 * (time() - start)
 	StatsLogger.gauge("completion_time", elapsed)
 
 	println("Result: $agg")
