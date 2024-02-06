@@ -28,3 +28,17 @@ The system was run on the designated server, using the [Griewank function](https
 | Network Usage (Rx)  | 220 B/(s * Worker)  | 207 B/(s * Worker)  | 206 B/(s * Worker)  |
 | CPU Usage           | 100%/Worker         | 100%/Worker         | 100%/Worker         |
 | Completion Time     | 73.2 Minutes        | 39.2 Minutes        | 20.0 Minutes        |
+
+#### Cloud (GCP)
+
+| Measurement         | 4 Nodes             | 8 Nodes             | 16 Nodes            |
+|---------------------|---------------------|---------------------|---------------------|
+| Worker Throughput   | 1.18 Results/Second | 1.16 Results/Second | 1.18 Results/Second |
+| Combined Throughput | 4.69 Results/Second | 9.19 Results/Second | 18.8 Results/Second |
+| Work-time Variation | 2.40%               | 1.58%               | 2.19%               |
+| Memory Usage        | 1.10 GB/Worker      | 1.08 GB/Worker      | 1.09 GB/Worker      |
+| Network Usage (Tx)  | 280 B/(s * Worker)  | 276 B/(s * Worker)  | 282 B/(s * Worker)  |
+| Network Usage (Rx)  | 189 B/(s * Worker)  | 187 B/(s * Worker)  | 194 B/(s * Worker)  |
+| CPU Usage           | 100%/Worker         | 100%/Worker         | 100%/Worker         |
+| Completion Time     | 85.2 Minutes        | 43.3 Minutes        | 21.3 Minutes        |
+
