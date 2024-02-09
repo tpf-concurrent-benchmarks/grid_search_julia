@@ -29,7 +29,3 @@
 | Completion Time     | Minutes            | Minutes        | Minutes        |
 
 Average measurements using the [specified configuration](measurements/README.md)
-
-## Subjective analysis
-
-TODO
