@@ -1,6 +1,7 @@
 WORKER_REPLICAS=4
 
 init:
+	docker swarm init || true
 	mkdir -p ./.keys
 	mkdir -p ./ips
 	ssh-keygen -t rsa -b 4096 -f ./.keys/manager_rsa -N ""
