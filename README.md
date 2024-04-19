@@ -43,3 +43,8 @@ The objective of this project is to benchmark the language on a real-world distr
 - Grafana: [http://127.0.0.1:8081](http://127.0.0.1:8081)
 - Graphite: [http://127.0.0.1:8080](http://127.0.0.1:8080)
 - Logs
+
+## Libraries
+
+- [StatsdClient](https://github.com/glenn-m/Statsd.jl/blob/38ad7bb0b6b40af3ea711e4efc506072a99b32a7/src/Statsd.jl)
+- ProgressMeter
