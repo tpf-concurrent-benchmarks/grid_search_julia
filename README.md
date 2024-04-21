@@ -36,7 +36,7 @@ The objective of this project is to benchmark the language on a real-world distr
 - `make deploy` will deploy the system. To execute the system:
   - Run `make manager_bash` to open a bash session on the manager. (Can fail if the container is not ready yet)
   - Run `julia manager.jl` on the manager to start the grid search.
-- `make remove` removes all services (stops the swarm).
+- `make remove` removes all services.
 
 ### Monitoring
 
